@@ -7,6 +7,7 @@ using Sample.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ICG.AspNetCore.Utilities;
 using Xunit;
 
 namespace Sample.Web.Tests.Controllers
@@ -17,13 +18,15 @@ namespace Sample.Web.Tests.Controllers
         private readonly Mock<ILogger<HomeController>> _loggerHomeControllerMock;
         private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
         private readonly Mock<IActivityAccessor> _activityAccessorMock;
+        private readonly Mock<ITimeProvider> _timeProviderMock;
 
         public HomeControllerTests()
         {
             _loggerHomeControllerMock = new Mock<ILogger<HomeController>>();
             _httpContextAccessorMock = new Mock<IHttpContextAccessor>();
             _activityAccessorMock = new Mock<IActivityAccessor>();
-            _controller = new HomeController(_loggerHomeControllerMock.Object, _httpContextAccessorMock.Object, _activityAccessorMock.Object);
+            _timeProviderMock = new Mock<ITimeProvider>();
+            _controller = new HomeController(_loggerHomeControllerMock.Object, _httpContextAccessorMock.Object, _activityAccessorMock.Object, _timeProviderMock.Object);
         }
 
         [Fact]
@@ -105,7 +108,44 @@ namespace Sample.Web.Tests.Controllers
 
             //Assert
             var viewResult = Assert.IsType<ViewResult>(result);
+        }
 
+        /// <summary>
+        /// This doesn't work
+        /// </summary>
+        [Fact]
+        public void CurrentTime_ReturnsAViewResult_WithCurrentTime()
+        {
+            //Arrange
+            var expectedTime = DateTime.Now;
+
+            //Act
+            var result = _controller.CurrentTime();
+
+            //Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            var modelResult = Assert.IsType<CurrentTimeModel>(viewResult.Model);
+            Assert.Equal(expectedTime, modelResult.CurrentTime);
+        }
+
+        /// <summary>
+        /// Works
+        /// </summary>
+        [Fact]
+        public void CurrentTimeTestable_ReturnsAViewResult_WithCurrentTime()
+        {
+            //Arrange
+            var expectedTime = DateTime.Now;
+            _timeProviderMock.Setup(t => t.Now).Returns(expectedTime).Verifiable();
+
+            //Act
+            var result = _controller.CurrentTimeTestable();
+
+            //Assert
+            var viewResult = Assert.IsType<ViewResult>(result);
+            var modelResult = Assert.IsType<CurrentTimeModel>(viewResult.Model);
+            Assert.Equal(expectedTime, modelResult.CurrentTime);
+            _timeProviderMock.Verify();
         }
     }
 }
